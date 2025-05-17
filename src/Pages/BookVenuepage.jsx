@@ -1,11 +1,21 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaCalendarAlt } from 'react-icons/fa';
 import Sidebar from '../Components/Layout/layout/Sidebar';
+import { supabase } from '../Supabase-client';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 const BookVenuePage = () => {
   const { venue } = useParams();
   const navigate = useNavigate();
+  const [venueId, setVenueId] = useState(null);
+  const [itemsMap, setItemsMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     studentName: '',
     studentId: '',
@@ -26,6 +36,44 @@ const BookVenuePage = () => {
     }
   });
 
+  // Fetch venue ID and items on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get venue ID
+        const { data: venueData, error: venueError } = await supabase
+          .from('venues')
+          .select('id')
+          .eq('name', decodeURIComponent(venue))
+          .single();
+
+        if (venueError) throw venueError;
+        setVenueId(venueData.id);
+
+        // Get items mapping
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('items')
+          .select('id, name');
+
+        if (itemsError) throw itemsError;
+        
+        const itemsMapping = itemsData.reduce((acc, item) => {
+          acc[item.name] = item.id;
+          return acc;
+        }, {});
+        
+        setItemsMap(itemsMapping);
+        setLoading(false);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setSubmitError('Failed to load booking information');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [venue]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -44,10 +92,98 @@ const BookVenuePage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/booking-status');
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      // Check for existing bookings
+      const { data: conflicts, error: conflictError } = await supabase
+        .from('bookings')
+        .select()
+        .eq('venue_id', venueId)
+        .eq('time', formData.time)
+        .lte('start_date', formData.endDate)
+        .gte('end_date', formData.startDate);
+
+      if (conflictError) throw conflictError;
+
+      if (conflicts.length > 0) {
+        toast.warning(
+          'There is an existing booking at this time. Please choose a different time.'
+        );
+        throw new Error(
+          'Booking conflict: There is an existing booking at this time.'
+        );
+      }
+
+      // Create new booking
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert([{
+          venue_id: venueId,
+          student_name: formData.studentName,
+          student_id: formData.studentId,
+          phone: formData.phone,
+          purpose: formData.purpose,
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          time: formData.time,
+          club: formData.club
+        }])
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      // Create booking items
+      const itemsToInsert = Object.entries(formData.items)
+        .filter(([_, item]) => item.checked && item.quantity > 0)
+        .map(([itemName, item]) => ({
+          booking_id: booking.id,
+          item_id: itemsMap[itemName],
+          quantity: item.quantity
+        }));
+
+      if (itemsToInsert.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('booking_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
+
+      navigate('/booking-status');
+    } catch (error) {
+      console.error('Booking error:', error);
+      setSubmitError(error.message || 'Booking failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen font-sans relative">
+        <Sidebar />
+        <div className="fixed left-64 right-0 top-0 bottom-0 flex items-center justify-center">
+          <div className="text-gray-600">Loading booking form...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!venueId) {
+    return (
+      <div className="flex min-h-screen font-sans relative">
+        <Sidebar />
+        <div className="fixed left-64 right-0 top-0 bottom-0 flex items-center justify-center">
+          <div className="text-red-500">Venue not found</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen font-sans relative">
@@ -69,6 +205,12 @@ const BookVenuePage = () => {
             Booking Form for {decodeURIComponent(venue)}
           </h2>
           
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+              {submitError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
             <div className="flex gap-4 mb-4 w-full flex-wrap">
               <div className="flex-1 min-w-[250px]">
@@ -191,13 +333,17 @@ const BookVenuePage = () => {
 
             <button 
               type="submit"
-              className="bg-blue-500 text-white py-2 px-8 rounded-lg text-sm font-medium mt-4 hover:bg-blue-600 transition-colors"
+              disabled={isSubmitting}
+              className={`bg-blue-500 text-white py-2 px-8 rounded-lg text-sm font-medium mt-4 transition-colors ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+              }`}
             >
-              SUBMIT BOOKING
+              {isSubmitting ? 'Submitting...' : 'SUBMIT BOOKING'}
             </button>
           </form>
 
-          <div className="mt-8 pt-5 text-center border-t border-gray-200">
+          {/* Existing footer remains the same */}
+           <div className="mt-8 pt-5 text-center border-t border-gray-200">
             <div className="text-2xl font-serif text-gray-800 mb-3">
               "inspiring minds"
             </div>

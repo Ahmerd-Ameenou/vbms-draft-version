@@ -6,7 +6,7 @@ import LoginPage from './Pages/LoginPage';
 import DashboardPage from './Pages/DashboardPage';
 import AvailableVenuesPage from './Pages/AvailableVenuePage';
 import VenuesListPage from './Pages/VenuesListPage';
-import BookVenuePage from './Pages/BookVenuePage';
+import BookVenuePage from './Pages/BookVenuepage';
 import ItemsReturnPage from './Pages/ItemsReturnPage';
 import BookingStatusPage from './Pages/BookingStatusPage';
 import ReportPage from './Pages/ReportPage';
