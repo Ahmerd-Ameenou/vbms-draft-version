@@ -1,11 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaCalendarAlt } from 'react-icons/fa';
 import Sidebar from '../Components/Layout/layout/Sidebar';
+import { supabase } from '../Supabase-client';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const BookVenuePage = () => {
   const { venue } = useParams();
   const navigate = useNavigate();
+  const [venueId, setVenueId] = useState(null);
+  const [itemsMap, setItemsMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     studentName: '',
     studentId: '',
@@ -13,18 +22,61 @@ const BookVenuePage = () => {
     purpose: '',
     startDate: '',
     endDate: '',
-    time: '',
+    startTime: '',
+    endTime: '',
     club: '',
     items: {
-      HDMI: { checked: false, quantity: 0 },
-      MIC: { checked: false, quantity: 0 },
-      PROJECT: { checked: false, quantity: 0 },
-      MIC_STAND: { checked: false, quantity: 0 },
-      MINI_SPEAKER: { checked: false, quantity: 0 },
-      AUDIO_CABLE: { checked: false, quantity: 0 },
-      MIXER: { checked: false, quantity: 0 }
+      Mat: { checked: false, quantity: 0 },
+      "Big drink container": { checked: false, quantity: 0 },
+      "First aid kit box": { checked: false, quantity: 0 },
+      "Portable speaker": { checked: false, quantity: 0 },
+      "Portable projector": { checked: false, quantity: 0 },
+      "HDMI cable": { checked: false, quantity: 0 },
+      "Audio cable": { checked: false, quantity: 0 },
+      "Portable white projection screen": { checked: false, quantity: 0 },
+      "Wireless microphone": { checked: false, quantity: 0 },
+      "Wired microphone": { checked: false, quantity: 0 },
+      "Mic stand": { checked: false, quantity: 0 },
+      Mixer: { checked: false, quantity: 0 }
     }
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get venue ID
+        const { data: venueData, error: venueError } = await supabase
+          .from('venues')
+          .select('id')
+          .eq('name', decodeURIComponent(venue))
+          .single();
+
+        if (venueError) throw venueError;
+        setVenueId(venueData.id);
+
+        // Get items mapping
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('items')
+          .select('id, name');
+
+        if (itemsError) throw itemsError;
+
+        const itemsMapping = itemsData.reduce((acc, item) => {
+          acc[item.name] = item.id;
+          return acc;
+        }, {});
+
+        setItemsMap(itemsMapping);
+        setLoading(false);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setSubmitError('Failed to load booking information');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [venue]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,10 +96,103 @@ const BookVenuePage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/booking-status');
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      // Check for existing bookings conflicts — now filtering only approved bookings
+      const { data: conflicts, error: conflictError } = await supabase
+        .from('bookings')
+        .select()
+        .eq('venue_id', venueId)
+        .eq('status', 'approved')  // <-- Only approved bookings
+        .gte('start_date', formData.startDate)
+        .lte('end_date', formData.endDate)
+        .or(
+          `and(start_time.lte.${formData.endTime},end_time.gte.${formData.startTime})`
+        ); // check overlapping times
+
+      if (conflictError) throw conflictError;
+
+      if (conflicts.length > 0) {
+        toast.warning(
+          'There is an existing booking at this time. Please choose a different time.'
+        );
+        throw new Error(
+          'Booking conflict: There is an existing booking at this time.'
+        );
+      }
+
+      // Create new booking with status 'pending' and start/end time
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert([{
+          venue_id: venueId,
+          student_name: formData.studentName,
+          student_id: formData.studentId,
+          phone: formData.phone,
+          purpose: formData.purpose,
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          start_time: formData.startTime,
+          end_time: formData.endTime,
+          club: formData.club,
+          status: 'pending'  // <-- booking starts as pending
+        }])
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      // Create booking items
+      const itemsToInsert = Object.entries(formData.items)
+        .filter(([_, item]) => item.checked && item.quantity > 0)
+        .map(([itemName, item]) => ({
+          booking_id: booking.id,
+          item_id: itemsMap[itemName],
+          quantity: item.quantity
+        }));
+
+      if (itemsToInsert.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('booking_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
+
+      navigate('/booking-status');
+    } catch (error) {
+      console.error('Booking error:', error);
+      setSubmitError(error.message || 'Booking failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen font-sans relative">
+        <Sidebar />
+        <div className="fixed left-64 right-0 top-0 bottom-0 flex items-center justify-center">
+          <div className="text-gray-600">Loading booking form...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!venueId) {
+    return (
+      <div className="flex min-h-screen font-sans relative">
+        <Sidebar />
+        <div className="fixed left-64 right-0 top-0 bottom-0 flex items-center justify-center">
+          <div className="text-red-500">Venue not found</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen font-sans relative">
@@ -69,6 +214,12 @@ const BookVenuePage = () => {
             Booking Form for {decodeURIComponent(venue)}
           </h2>
           
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+              {submitError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
             <div className="flex gap-4 mb-4 w-full flex-wrap">
               <div className="flex-1 min-w-[250px]">
@@ -148,10 +299,20 @@ const BookVenuePage = () => {
                 />
               </div>
               <div className="flex-1 min-w-[200px]">
-                <label className="block mb-2 font-semibold text-gray-700 text-sm">Time</label>
+                <label className="block mb-2 font-semibold text-gray-700 text-sm">Start Time</label>
                 <input
                   type="time"
-                  name="time"
+                  name="startTime"
+                  className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
+                  required
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="block mb-2 font-semibold text-gray-700 text-sm">End Time</label>
+                <input
+                  type="time"
+                  name="endTime"
                   className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
                   required
                   onChange={handleInputChange}
@@ -165,7 +326,7 @@ const BookVenuePage = () => {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-4">
               {Object.entries(formData.items).map(([itemKey, itemData]) => {
-                const itemName = itemKey.replace('_', ' ');
+                // Display the item key as is (already replaced with the exact names you provided)
                 return (
                   <div key={itemKey} className="border-2 border-blue-500 rounded-lg p-3 flex items-center gap-3 bg-gray-50">
                     <input
@@ -174,7 +335,7 @@ const BookVenuePage = () => {
                       onChange={(e) => handleItemChange(itemKey, 'checked', e.target.checked)}
                       className="h-4 w-4"
                     />
-                    <span className="flex-1 text-sm">{itemName}</span>
+                    <span className="flex-1 text-sm">{itemKey}</span>
                     <input
                       type="number"
                       min="0"
@@ -191,9 +352,12 @@ const BookVenuePage = () => {
 
             <button 
               type="submit"
-              className="bg-blue-500 text-white py-2 px-8 rounded-lg text-sm font-medium mt-4 hover:bg-blue-600 transition-colors"
+              disabled={isSubmitting}
+              className={`bg-blue-500 text-white py-2 px-8 rounded-lg text-sm font-medium mt-4 transition-colors ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+              }`}
             >
-              SUBMIT BOOKING
+              {isSubmitting ? 'Submitting...' : 'SUBMIT BOOKING'}
             </button>
           </form>
 

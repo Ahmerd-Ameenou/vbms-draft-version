@@ -1,17 +1,65 @@
-import React from 'react'; // Add this line
+import React from 'react';
 import { Link } from 'react-router-dom';
 
-const SquareButton = ({ icon, text, to }) => {
-  return (
-    <Link to={to} className="no-underline">
-      <div className="w-48 h-48 bg-white rounded-lg border-2 border-blue-500 flex flex-col items-center justify-center shadow-md cursor-pointer hover:transform hover:scale-105 transition-transform">
-        <div className="mb-4">
-          {React.cloneElement(icon, { className: "text-blue-500 text-3xl" })}
+const SquareButton = ({ icon, text, to, onClick }) => {
+  const content = (
+    <div className="group relative w-48 h-48 rounded-[18px] overflow-hidden">
+      {/* Base colored background */}
+      <div className="absolute inset-0 bg-[#1a2552]/90 backdrop-blur-xs rounded-[16px]"></div>
+      
+      {/* Animated gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a2552]/80 via-[#0ba9a9]/50 to-[#83c059]/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
+      
+      {/* Main card with premium styling */}
+      <div className="relative h-full w-full border border-[#0ba9a9]/30 rounded-[15px] flex flex-col items-center justify-center p-6 transition-all duration-500 group-hover:shadow-[0_10px_30px_-5px_rgba(11,169,169,0.3)] group-hover:-translate-y-1.5 group-hover:border-[#83c059]/50 overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute -inset-1 bg-[#83c059]/20 opacity-0 group-hover:opacity-40 blur-[12px] transition-opacity duration-700"></div>
+        
+        {/* Icon with vibrant gradient */}
+        <div className="mb-5 transform transition-all duration-500 group-hover:-translate-y-2 group-hover:scale-110 z-10">
+          {React.cloneElement(icon, { 
+            className: "text-4xl text-transparent bg-clip-text bg-gradient-to-br from-[#0ba9a9] to-[#83c059] drop-shadow-md" 
+          })}
         </div>
-        <div className="text-black text-base font-medium text-center px-2">{text}</div>
+        
+        {/* Text with glow effect */}
+        <span className="text-lg font-semibold text-white group-hover:text-[#83c059] transition-colors duration-500 drop-shadow-md z-10">
+          {text}
+        </span>
+        
+        {/* Animated accent bar */}
+        <div className="absolute bottom-6 h-[3px] w-8 bg-gradient-to-r from-[#0ba9a9] to-[#83c059] opacity-0 group-hover:opacity-100 group-hover:w-20 transition-all duration-700 ease-out"></div>
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-5 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:20px_20px]"></div>
       </div>
+      
+      {/* Reflection shine */}
+      <div className="absolute inset-0 rounded-[16px] opacity-0 group-hover:opacity-20 group-hover:bg-white/30 mix-blend-overlay transition-opacity duration-500 pointer-events-none"></div>
+    </div>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        type="button"
+        className="p-0 border-none bg-transparent focus:outline-none focus:ring-2 focus:ring-[#83c059]/50 focus:ring-offset-2 rounded-[16px]"
+        aria-label={text}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link 
+      to={to} 
+      className="no-underline inline-block rounded-[16px] focus:outline-none focus:ring-2 focus:ring-[#83c059]/50 focus:ring-offset-2" 
+      aria-label={text}
+    >
+      {content}
     </Link>
   );
 };
-
 export default SquareButton;

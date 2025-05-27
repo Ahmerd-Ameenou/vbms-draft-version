@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../Components/Layout/layout/Sidebar';
 
 const ItemsReturnPage = () => {
@@ -13,13 +13,18 @@ const ItemsReturnPage = () => {
     dateReturned: '',
     club: '',
     items: {
-      HDMI: { checked: false, quantity: 0 },
-      MIC: { checked: false, quantity: 0 },
-      PROJECT: { checked: false, quantity: 0 },
-      MIC_STAND: { checked: false, quantity: 0 },
-      MINI_SPEAKER: { checked: false, quantity: 0 },
-      AUDIO_CABLE: { checked: false, quantity: 0 },
-      MIXER: { checked: false, quantity: 0 }
+      Mat: { checked: false, quantity: 0 },
+      'Big drink container': { checked: false, quantity: 0 },
+      'First aid kit box': { checked: false, quantity: 0 },
+      'Portable speaker': { checked: false, quantity: 0 },
+      'Portable projector': { checked: false, quantity: 0 },
+      'HDMI cable': { checked: false, quantity: 0 },
+      'Wireless microphone': { checked: false, quantity: 0 },
+      'Wired microphone': { checked: false, quantity: 0 },
+      'Mic stand': { checked: false, quantity: 0 },
+      'Audio cable': { checked: false, quantity: 0 },
+      'Portable white projection screen': { checked: false, quantity: 0 },
+      Mixer: { checked: false, quantity: 0 }
     }
   });
 
@@ -54,7 +59,7 @@ const ItemsReturnPage = () => {
       }} />
 
       <div className="fixed left-64 right-0 top-0 bottom-0 overflow-y-auto bg-white border-l border-gray-200">
-        <button 
+        <button
           onClick={() => navigate('/dashboard')}
           className="absolute left-5 top-5 flex items-center gap-2 py-2 px-4 bg-white border-2 border-blue-500 rounded-lg text-blue-500 text-sm font-semibold cursor-pointer z-10 hover:bg-blue-50"
         >
@@ -65,7 +70,7 @@ const ItemsReturnPage = () => {
           <h2 className="text-center mb-6 text-xl font-semibold text-gray-800">
             Items Return Form
           </h2>
-          
+
           <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
             <div className="flex gap-4 mb-4 w-full flex-wrap">
               <div className="flex-1 min-w-[250px]">
@@ -149,7 +154,7 @@ const ItemsReturnPage = () => {
             <h3 className="text-gray-800 my-3 text-sm font-semibold w-full">
               Items Returned
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-4">
               {Object.entries(formData.items).map(([itemKey, itemData]) => {
                 const itemName = itemKey.replace('_', ' ');
@@ -176,7 +181,7 @@ const ItemsReturnPage = () => {
               })}
             </div>
 
-            <button 
+            <button
               type="submit"
               className="bg-blue-500 text-white py-2 px-8 rounded-lg text-sm font-medium mt-4 hover:bg-blue-600 transition-colors"
             >
