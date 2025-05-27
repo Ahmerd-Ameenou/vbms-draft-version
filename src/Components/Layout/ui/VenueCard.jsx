@@ -43,7 +43,7 @@ const VenueCard = ({ venue, bookingInfo }) => {
       <div className="h-10 px-4 pb-3 flex items-end">
         <Link 
           to={`/book/${encodeURIComponent(venue)}`}
-          className="w-full py-1.5 px-3 bg-blue-950 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors text-center block"
+          className="w-full py-1.5 px-3 bg-blue-900 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors text-center block"
         >
           Book Now
         </Link>
@@ -52,4 +52,4 @@ const VenueCard = ({ venue, bookingInfo }) => {
   );
 };
 
-export default VenueCard;
+export default VenueCard; 
