@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
-// Correct imports matching your structure
+// Import all your pages
 import LoginPage from './Pages/LoginPage';
 import DashboardPage from './Pages/DashboardPage';
 import AvailableVenuesPage from './Pages/AvailableVenuesPage';
@@ -10,42 +10,61 @@ import BookVenuePage from './Pages/BookVenuepage';
 import ItemsReturnPage from './Pages/ItemsReturnPage';
 import BookingStatusPage from './Pages/BookingStatusPage';
 import ReportPage from './Pages/ReportPage';
-import AdminDashboard from './Pages/AdminDashboard'; // Corrected file name
+import AdminDashboard from './Pages/AdminDashboard';
 import RegistrationPage from './Pages/RegistrationPage';
-import UsersPage from './Pages/UsersPage'; // Adjust the path as necessary
-import BookedVenuesPage from './Pages/BookedVenuesPage';  // Adjust the path
-import ApproveRejectBookings from './Pages/ApproveRejectBookings';  // Adjust the path accordingly
+import UsersPage from './Pages/UsersPage';
+import BookedVenuesPage from './Pages/BookedVenuesPage';
+import ApproveRejectBookings from './Pages/ApproveRejectBookings';
 import UserProfilePage from './Pages/UserProfilePage';
-import InventoryPage from './Pages/InventoryPage';  
-
-
-
-
-
-
-
+import InventoryPage from './Pages/InventoryPage';
 
 const ProtectedRoute = ({ children, isAuthenticated }) => {
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    // Store attempted path for redirect after login
+    localStorage.setItem('redirectPath', window.location.pathname);
+    return <Navigate to="/login" replace />;
+  }
   return children;
 };
 
+const InitialRedirect = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (location.pathname === '/') {
+      window.history.replaceState(null, '', '/login');
+    }
+  }, [location]);
+
+  return null;
+};
+
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    localStorage.getItem('isAuthenticated') === 'true'
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
+
+  // Clear redirect path on mount
+  useEffect(() => {
+    localStorage.removeItem('redirectPath');
+  }, []);
 
   return (
     <Router>
+      <InitialRedirect />
       <Routes>
-        {/* Login Route */}
+        {/* Login Route with redirect back to original path */}
         <Route
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={localStorage.getItem('redirectPath') || '/dashboard'} replace />
             ) : (
-              <LoginPage onLogin={() => setIsAuthenticated(true)} />
+              <LoginPage onLogin={() => {
+                localStorage.setItem('isAuthenticated', 'true');
+                setIsAuthenticated(true);
+              }} />
             )
           }
         />
@@ -54,8 +73,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<RegistrationPage />} />
 
-
-        {/* Admin Dashboard */}
+        {/* Admin Routes */}
         <Route
           path="/admin-dashboard"
           element={
@@ -65,19 +83,43 @@ export default function App() {
           }
         />
 
-        <Route path="/admin" element={<AdminDashboard />} />
-        
-        <Route path="/users" element={<UsersPage />} />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <UsersPage />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/booked-venues" element={<BookedVenuesPage />} />
-        <Route path="/user-profile" element={<UserProfilePage />} />
-        <Route path="/inventory" element={<InventoryPage />} />
+        <Route
+          path="/booked-venues"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <BookedVenuesPage />
+            </ProtectedRoute>
+          }
+        />
 
-        
-<Route path="/approve-reject-bookings" element={<ApproveRejectBookings />} />
+        <Route
+          path="/approve-reject-bookings"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <ApproveRejectBookings />
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <InventoryPage />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Protected Routes */}
+        {/* User Routes */}
         <Route
           path="/dashboard"
           element={
@@ -141,8 +183,22 @@ export default function App() {
           }
         />
 
-        {/* Catch-all route for unmatched paths */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/user-profile"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <UserProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch-all route */}
+        <Route 
+          path="*" 
+          element={
+            <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+          } 
+        />
       </Routes>
     </Router>
   );

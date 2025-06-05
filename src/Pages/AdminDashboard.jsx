@@ -1,5 +1,5 @@
 import { FaUsers, FaCalendarAlt, FaBoxOpen, FaFileAlt, FaBoxes, FaClipboardCheck } from 'react-icons/fa';
-import Sidebar from '../Components/Layout/layout/Sidebar';
+import Sidebar from '../Components/Layout/layout/AdminSidebar';
 import SquareButton from '../Components/Layout/layout/SquareButton';
 
 function AdminDasboard() {

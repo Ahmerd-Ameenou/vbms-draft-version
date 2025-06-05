@@ -31,7 +31,7 @@ const Sidebar = ({ onLogout }) => {
           <MenuItem icon={<FaQuestionCircle color={iconColor} />} text="REQUEST BOOKING STATUS" to="/booking-status" />
         </div>
         <div className="mb-4">
-          <MenuItem icon={<FaRegFileAlt color={iconColor} />} text="adminDasboard" to="/admin" />
+
         </div>
       </nav>
 

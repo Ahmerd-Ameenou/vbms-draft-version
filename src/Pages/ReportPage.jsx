@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import Sidebar from '../Components/Layout/layout/Sidebar';
+import Sidebar from '../Components/Layout/layout/AdminSidebar';
 import { supabase } from '../Supabase-client';
 
 // jsPDF and autotable for PDF export

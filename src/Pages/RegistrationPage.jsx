@@ -21,6 +21,16 @@ function RegistrationPage() {
       return;
     }
 
+    // Email validation regex
+    const studentEmailRegex = /^[a-zA-Z]+@student\.aiu\.edu\.my$/;
+    const staffEmailRegex = /^[a-zA-Z]+@staff\.aiu\.edu\.my$/;
+
+    if (!studentEmailRegex.test(email) && !staffEmailRegex.test(email)) {
+      setError('Registration is allowed only with student.aiu.edu.my or staff.aiu.edu.my emails');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
