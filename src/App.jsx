@@ -17,7 +17,8 @@ import BookedVenuesPage from './Pages/BookedVenuesPage';
 import ApproveRejectBookings from './Pages/ApproveRejectBookings';
 import UserProfilePage from './Pages/UserProfilePage';
 import InventoryPage from './Pages/InventoryPage';
-
+import AdminLogin from './Pages/AdminLogin';
+import LandingPage from './Pages/LandingPage';
 const ProtectedRoute = ({ children, isAuthenticated }) => {
   if (!isAuthenticated) {
     // Store attempted path for redirect after login
@@ -72,7 +73,8 @@ export default function App() {
         {/* Default Route */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<RegistrationPage />} />
-
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/" element={<LandingPage />} />
         {/* Admin Routes */}
         <Route
           path="/admin-dashboard"

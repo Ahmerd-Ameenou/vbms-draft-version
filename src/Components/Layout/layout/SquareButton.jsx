@@ -3,19 +3,19 @@ import { Link } from 'react-router-dom';
 
 const SquareButton = ({ icon, text, to, onClick }) => {
   const content = (
-    <div className="group relative w-48 h-48 rounded-[18px] overflow-hidden">
+    <div className="group relative w-56 h-56 rounded-[18px] overflow-hidden">
       {/* Background layers */}
       <div className="absolute inset-0 bg-[#1a2552]/90 backdrop-blur-xs rounded-[16px]"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a2552]/80 via-[#0ba9a9]/50 to-[#83c059]/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
       
       {/* Main button container */}
-      <div className="relative h-full w-full flex flex-col items-center border border-[#0ba9a9]/30 rounded-[15px] p-6 transition-all duration-500 group-hover:shadow-[0_10px_30px_-5px_rgba(11,169,169,0.3)] group-hover:-translate-y-1.5 group-hover:border-[#83c059]/50 overflow-hidden">
+      <div className="relative h-full w-full flex flex-col items-center border border-[#0ba9a9]/30 rounded-[15px] p-4 transition-all duration-500 group-hover:shadow-[0_10px_30px_-5px_rgba(11,169,169,0.3)] group-hover:-translate-y-1.5 group-hover:border-[#83c059]/50 overflow-hidden">
         {/* Visual effects */}
         <div className="absolute -inset-1 bg-[#83c059]/20 opacity-0 group-hover:opacity-40 blur-[12px] transition-opacity duration-700"></div>
         <div className="absolute inset-0 opacity-5 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:20px_20px]"></div>
         
         {/* Icon with fixed positioning */}
-        <div className="h-16 w-full flex items-center justify-center mb-3 transform transition-all duration-500 group-hover:-translate-y-2 group-hover:scale-110 z-10">
+        <div className="h-20 w-full flex items-center justify-center mb-3 transform transition-all duration-500 group-hover:-translate-y-2 group-hover:scale-110 z-10">
           {React.cloneElement(icon, { 
             className: "text-4xl text-[#2596be] drop-shadow-md" 
           })}

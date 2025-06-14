@@ -40,13 +40,6 @@ function ApproveRejectBookings() {
         status,
         venues (
           name
-        ),
-        booking_items (
-          id,
-          quantity,
-          items (
-            name
-          )
         )
       `)
       .eq('status', 'pending')
@@ -320,35 +313,6 @@ function ApproveRejectBookings() {
                     </div>
                   </div>
                 </div>
-
-                {/* Requested Items Section - Now properly included */}
-                {selectedBooking.booking_items && selectedBooking.booking_items.length > 0 && (
-                  <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <h4 className="text-lg font-bold text-blue-800 mb-4">Requested Items</h4>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Item</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {selectedBooking.booking_items.map((item) => (
-                            <tr key={item.id}>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {item.items?.name || 'Unknown Item'}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {item.quantity}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

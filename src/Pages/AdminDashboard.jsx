@@ -12,7 +12,17 @@ function AdminDasboard() {
 
       <div className="fixed left-64 right-0 top-0 bottom-0 overflow-y-auto bg-white border-l border-gray-200">
         <div className="flex-1 bg-white p-0 flex flex-col items-center">
-          <div className="flex gap-8 justify-center w-full max-w-5xl flex-wrap mt-8">
+          {/* Modern Welcome Title */}
+          <div className="w-full max-w-5xl px-6 mt-8 mb-6">
+            <h1 className="text-4xl font-bold text-gray-800">
+              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Admin Dashboard</span>
+            </h1>
+            <p className="text-gray-500 mt-2 text-lg">
+            Efficiently oversee reservations, approvals, and reporting
+            </p>
+          </div>
+
+          <div className="flex gap-8 justify-center w-full max-w-5xl flex-wrap mt-4">
             {/* USERS button now navigates to /users */}
             <SquareButton
               icon={<FaUsers />}
