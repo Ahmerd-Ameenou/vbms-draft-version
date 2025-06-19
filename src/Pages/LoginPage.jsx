@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import aiuBackground from '../assets/aiu.jpg';
@@ -9,17 +9,21 @@ const LoginPage = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
+  // Clear any existing auth when component mounts
+  useEffect(() => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('isAdminAuthenticated');
+    localStorage.removeItem('userRole');
+  }, []);
+
   // Function to validate email domain
   const isValidEmail = (email) => {
-    // Regex to match only student or staff AIU emails
     return /^(.*@(student\.aiu\.edu\.my|staff\.aiu\.edu\.my))$/i.test(email);
   };
 
   const handleSubmit = async () => {
     if (!isValidEmail(email)) {
-      alert(
-        'Please use a valid AIU email address: either student.aiu.edu.my or staff.aiu.edu.my'
-      );
+      alert('Please use a valid AIU email address: either student.aiu.edu.my or staff.aiu.edu.my');
       return;
     }
 
@@ -33,7 +37,19 @@ const LoginPage = ({ onLogin }) => {
       return;
     }
 
-    onLogin();
+    // Set the role and redirect based on user role
+    const role = email.endsWith('@admin.aiu.edu.my') ? 'admin' : 'student';
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', role);
+
+    if (onLogin) onLogin();
+
+    if (role === 'admin') {
+      localStorage.setItem('isAdminAuthenticated', 'true');
+      navigate('/admin-dashboard');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -44,7 +60,7 @@ const LoginPage = ({ onLogin }) => {
         style={{ backgroundImage: `url(${aiuBackground})` }}
       ></div>
 
-      {/* Login card with semi-transparent background - increased height by 50px */}
+      {/* Login card with semi-transparent background */}
       <div className="flex rounded-xl shadow-lg overflow-hidden max-w-4xl w-full h-[500px] relative z-10 bg-white/90 backdrop-blur-sm">
         {/* Left Panel */}
         <div
@@ -83,7 +99,7 @@ const LoginPage = ({ onLogin }) => {
           >
             Log In
           </button>
-          
+
           {/* Registration link */}
           <p className="text-sm text-gray-500 mt-4">
             Don't have an account?{' '}
@@ -91,8 +107,8 @@ const LoginPage = ({ onLogin }) => {
               Register here
             </a>
           </p>
-          
-          {/* Admin access section - added with minimal styling changes */}
+
+          {/* Admin access section */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <a 
               href="/admin/login" 

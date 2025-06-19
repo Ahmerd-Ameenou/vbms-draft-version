@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../Supabase-client';
 
 function RegistrationPage() {
@@ -8,12 +7,13 @@ function RegistrationPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [successMessage, setSuccessMessage] = useState(''); // Add state for success message
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(''); // Reset success message on each submit
 
     if (!fullName || !email || !password) {
       setError('Please fill out all fields');
@@ -22,8 +22,8 @@ function RegistrationPage() {
     }
 
     // Email validation regex
-    const studentEmailRegex = /^[a-zA-Z]+@student\.aiu\.edu\.my$/;
-    const staffEmailRegex = /^[a-zA-Z]+@staff\.aiu\.edu\.my$/;
+    const studentEmailRegex = /^[\w._%+-]+@student\.aiu\.edu\.my$/;
+    const staffEmailRegex = /^[\w._%+-]+@staff\.aiu\.edu\.my$/;
 
     if (!studentEmailRegex.test(email) && !staffEmailRegex.test(email)) {
       setError('Registration is allowed only with student.aiu.edu.my or staff.aiu.edu.my emails');
@@ -43,29 +43,31 @@ function RegistrationPage() {
       });
 
       if (authError) {
-        throw authError;
+        // Handle user already registered case specifically
+        if (authError.message.includes('already exists')) {
+          setError('User already registered. Please check your email for confirmation link.');
+        } else {
+          setError(authError.message || 'Failed to register. Please try again.');
+        }
+        setLoading(false);
+        return;
       }
 
       const { error: insertError } = await supabase
         .from('users')
-        .insert([
-          {
-            id: authData.user.id,
-            full_name: fullName,
-            email: email,
-            created_at: new Date().toISOString()
-          }
-        ]);
+        .insert([{
+          id: authData.user.id,
+          full_name: fullName,
+          email: email,
+          created_at: new Date().toISOString()
+        }]);
 
       if (insertError) {
         throw insertError;
       }
 
-      if (authData.user?.identities?.length === 0) {
-        setError('User already registered. Please check your email for confirmation link.');
-      } else {
-        navigate('/login', { state: { message: 'Registration successful! Please check your email to confirm.' } });
-      }
+      // Display success message after registration
+      setSuccessMessage('User registered successfully! Please check your email to confirm.');
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -91,9 +93,15 @@ function RegistrationPage() {
 
         {/* Right Panel */}
         <div className="flex-1 flex flex-col justify-center p-10 text-center bg-blue-50">
-          <form onSubmit={handleSubmit}>
-            {error && <p className="text-red-500 mb-3">{error}</p>}
+          {/* Success Message */}
+          {successMessage && (
+            <p className="text-green-500 mb-3">{successMessage}</p>
+          )}
 
+          {/* Error Message */}
+          {error && <p className="text-red-500 mb-3">{error}</p>}
+
+          <form onSubmit={handleSubmit}>
             <input
               type="text"
               placeholder="Full Name"

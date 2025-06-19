@@ -12,53 +12,58 @@ function AdminDasboard() {
 
       <div className="fixed left-64 right-0 top-0 bottom-0 overflow-y-auto bg-white border-l border-gray-200">
         <div className="flex-1 bg-white p-0 flex flex-col items-center">
-          {/* Modern Welcome Title */}
-          <div className="w-full max-w-5xl px-6 mt-8 mb-6">
-            <h1 className="text-4xl font-bold text-gray-800">
+          {/* Modern Welcome Title - Reduced margin-top */}
+          <div className="w-full max-w-5xl px-6 mt-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-800">
               Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Admin Dashboard</span>
             </h1>
-            <p className="text-gray-500 mt-2 text-lg">
-            Efficiently oversee reservations, approvals, and reporting
+            <p className="text-gray-500 mt-1 text-md">
+              Efficiently oversee reservations, approvals, and reporting
             </p>
           </div>
 
-          <div className="flex gap-8 justify-center w-full max-w-5xl flex-wrap mt-4">
-            {/* USERS button now navigates to /users */}
+          {/* Main buttons - Reduced gap and margins */}
+          <div className="flex gap-4 justify-center w-full max-w-5xl flex-wrap mt-2 px-4">
+            {/* USERS button */}
             <SquareButton
-              icon={<FaUsers />}
+              icon={<FaUsers className="text-lg" />}
               text="USERS"
-              to="/users"  // Navigate to the new Users page
+              to="/users"
+              className="h-28" // Reduced height
             />
 
             {/* Manage Inventory */}
             <SquareButton
-              icon={<FaBoxes />}
-              text="MANAGE INVENTORY"
-              to="/inventory"  // Navigate to the Inventory page
+              icon={<FaBoxes className="text-lg" />}
+              text="INVENTORY"
+              to="/inventory"
+              className="h-28"
             />
 
             {/* Booked Venues */}
             <SquareButton
-              icon={<FaCalendarAlt />}
+              icon={<FaCalendarAlt className="text-lg" />}
               text="BOOKED VENUES"
               to="/booked-venues"
+              className="h-28"
             />
 
             {/* Approve/Reject Bookings */}
             <SquareButton
-              icon={<FaClipboardCheck />}
-              text="APPROVE/REJECT BOOKINGS"
+              icon={<FaClipboardCheck className="text-lg" />}
+              text="APPROVE BOOKINGS"
               to="/approve-reject-bookings"
+              className="h-28"
             />
           </div>
 
-          {/* New Generate Booking Reports Button */}
-          <div className="w-full flex justify-center mt-8">
+          {/* Generate Reports Button - Smaller and less margin */}
+          <div className="w-full flex justify-center mt-4 px-4">
             <SquareButton
-              icon={<FaFileAlt />}
-              text="GENERATE BOOKING REPORTS"
+              icon={<FaFileAlt className="text-lg" />}
+              text="REPORTS"
               to="/report"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="w-64 h-12 bg-blue-600 hover:bg-blue-700" // More compact
             />
           </div>
         </div>

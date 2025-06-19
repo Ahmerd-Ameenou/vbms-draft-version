@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../Supabase-client';
+import AdminSidebar from '../Components/Layout/layout/AdminSidebar';
 
 function BookedVenuesPage() {
   const [bookings, setBookings] = useState([]);

@@ -19,15 +19,48 @@ import UserProfilePage from './Pages/UserProfilePage';
 import InventoryPage from './Pages/InventoryPage';
 import AdminLogin from './Pages/AdminLogin';
 import LandingPage from './Pages/LandingPage';
-const ProtectedRoute = ({ children, isAuthenticated }) => {
-  if (!isAuthenticated) {
-    // Store attempted path for redirect after login
-    localStorage.setItem('redirectPath', window.location.pathname);
-    return <Navigate to="/login" replace />;
+
+// Protected Route Component
+const ProtectedRoute = ({ children, adminRoute = false }) => {
+  const location = useLocation();
+  
+  // Combined auth check
+  const isAuth = localStorage.getItem('isAuthenticated') === 'true' || 
+                localStorage.getItem('isAdminAuthenticated') === 'true';
+  const isAdmin = localStorage.getItem('isAdminAuthenticated') === 'true';
+
+  if (!isAuth) {
+    localStorage.setItem('redirectPath', location.pathname);
+    return <Navigate to={adminRoute ? "/admin/login" : "/login"} replace />;
   }
-  return children;
+
+  // Allow access if:
+  // - User accesses user route AND is regular user
+  // - Admin accesses admin route AND is admin
+  if ((adminRoute && isAdmin) || (!adminRoute && !isAdmin)) {
+    return children;
+  }
+
+  // Redirect to proper dashboard if role mismatch
+  return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
 };
 
+// Auth Cleanup Component
+const AuthCleanup = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (location.pathname === '/login' || location.pathname === '/admin/login') {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('isAdminAuthenticated');
+      localStorage.removeItem('userRole');
+    }
+  }, [location.pathname]);
+
+  return null;
+};
+
+// Initial Redirect Component
 const InitialRedirect = () => {
   const location = useLocation();
   
@@ -40,46 +73,67 @@ const InitialRedirect = () => {
   return null;
 };
 
+// Main App Component
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Initialize from localStorage
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  // Clear redirect path on mount
   useEffect(() => {
+    // Initialize auth state
+    setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    setIsAdminAuthenticated(localStorage.getItem('isAdminAuthenticated') === 'true');
     localStorage.removeItem('redirectPath');
   }, []);
 
   return (
     <Router>
+      <AuthCleanup />
       <InitialRedirect />
       <Routes>
-        {/* Login Route with redirect back to original path */}
+        {/* Login Route */}
         <Route
           path="/login"
           element={
-            isAuthenticated ? (
-              <Navigate to={localStorage.getItem('redirectPath') || '/dashboard'} replace />
+            localStorage.getItem('isAuthenticated') === 'true' ? (
+              <Navigate to="/dashboard" replace />
             ) : (
               <LoginPage onLogin={() => {
                 localStorage.setItem('isAuthenticated', 'true');
                 setIsAuthenticated(true);
+                localStorage.removeItem('isAdminAuthenticated');
+                setIsAdminAuthenticated(false);
               }} />
             )
           }
         />
 
-        {/* Default Route */}
+        {/* Admin Login Route */}
+        <Route
+          path="/admin/login"
+          element={
+            localStorage.getItem('isAdminAuthenticated') === 'true' ? (
+              <Navigate to="/admin-dashboard" replace />
+            ) : (
+              <AdminLogin onAdminLogin={() => {
+                localStorage.setItem('isAdminAuthenticated', 'true');
+                setIsAdminAuthenticated(true);
+                localStorage.removeItem('isAuthenticated');
+                setIsAuthenticated(false);
+              }} />
+            )
+          }
+        />
+
+        {/* Public Routes */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<RegistrationPage />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/" element={<LandingPage />} />
-        {/* Admin Routes */}
+        <Route path="/landing" element={<LandingPage />} />
+
+        {/* Admin Protected Routes */}
         <Route
           path="/admin-dashboard"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute adminRoute={true}>
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -88,7 +142,7 @@ export default function App() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute adminRoute={true}>
               <UsersPage />
             </ProtectedRoute>
           }
@@ -97,7 +151,7 @@ export default function App() {
         <Route
           path="/booked-venues"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute adminRoute={true}>
               <BookedVenuesPage />
             </ProtectedRoute>
           }
@@ -106,7 +160,7 @@ export default function App() {
         <Route
           path="/approve-reject-bookings"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute adminRoute={true}>
               <ApproveRejectBookings />
             </ProtectedRoute>
           }
@@ -115,17 +169,17 @@ export default function App() {
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute adminRoute={true}>
               <InventoryPage />
             </ProtectedRoute>
           }
         />
 
-        {/* User Routes */}
+        {/* User Protected Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <DashboardPage />
             </ProtectedRoute>
           }
@@ -134,7 +188,7 @@ export default function App() {
         <Route
           path="/available-venues"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <AvailableVenuesPage />
             </ProtectedRoute>
           }
@@ -143,7 +197,7 @@ export default function App() {
         <Route
           path="/venues"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <VenuesListPage />
             </ProtectedRoute>
           }
@@ -152,7 +206,7 @@ export default function App() {
         <Route
           path="/book/:venue"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <BookVenuePage />
             </ProtectedRoute>
           }
@@ -161,25 +215,38 @@ export default function App() {
         <Route
           path="/items-return"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <ItemsReturnPage />
             </ProtectedRoute>
           }
         />
 
-        <Route
-          path="/report"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <ReportPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* REPORT PAGE ROUTE - Now properly protected */}
+        // To just this:
+        {/* Report Route - Modified to bypass strict role check */}
+{/* Admin-only Report Route */}
+          
+<Route
+  path="/report"
+  element={
+    localStorage.getItem('isAdminAuthenticated') === 'true' ? (
+      <ReportPage />
+    ) : (
+      <Navigate to={
+        localStorage.getItem('isAuthenticated') === 'true' 
+          ? '/admin-dashboard'  // Redirect admins to admin dashboard
+          : '/admin/login'      // Redirect others to admin login
+      } replace />
+    )
+  }
+/>
+
+
 
         <Route
           path="/booking-status"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <BookingStatusPage />
             </ProtectedRoute>
           }
@@ -188,17 +255,20 @@ export default function App() {
         <Route
           path="/user-profile"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProtectedRoute>
               <UserProfilePage />
             </ProtectedRoute>
           }
         />
 
-        {/* Catch-all route */}
+        {/* Catch-all Route */}
         <Route 
           path="*" 
           element={
-            <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+            <Navigate to={
+              isAdminAuthenticated ? '/admin-dashboard' : 
+              isAuthenticated ? '/dashboard' : '/login'
+            } replace />
           } 
         />
       </Routes>

@@ -5,6 +5,8 @@ import Sidebar from '../Components/Layout/layout/Sidebar';
 import { supabase } from '../Supabase-client';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const BookVenuePage = () => {
   const { venue } = useParams();
@@ -14,6 +16,7 @@ const BookVenuePage = () => {
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   const [formData, setFormData] = useState({
     studentName: '',
@@ -78,9 +81,78 @@ const BookVenuePage = () => {
     fetchData();
   }, [venue]);
 
+  const validateForm = () => {
+    const errors = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Validate student name (letters only)
+    if (!formData.studentName.trim()) {
+      errors.studentName = 'Student name is required';
+    } else if (!/^[A-Za-z\s]+$/.test(formData.studentName)) {
+      errors.studentName = 'Name should contain only letters';
+    }
+
+    // Validate student ID (alphanumeric)
+    if (!formData.studentId.trim()) {
+      errors.studentId = 'Student ID is required';
+    } else if (!/^[A-Za-z0-9]+$/.test(formData.studentId)) {
+      errors.studentId = 'ID should be alphanumeric';
+    }
+
+    // Validate phone number (now accepts international numbers with + and special characters)
+    if (!formData.phone.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+
+    // Validate club/association (letters only)
+    if (!formData.club.trim()) {
+      errors.club = 'Club/Association is required';
+    } else if (!/^[A-Za-z\s]+$/.test(formData.club)) {
+      errors.club = 'Club name should contain only letters';
+    }
+
+    // Validate purpose
+    if (!formData.purpose.trim()) {
+      errors.purpose = 'Purpose is required';
+    }
+
+    // Validate dates
+    if (!formData.startDate) {
+      errors.startDate = 'Start date is required';
+    } else if (new Date(formData.startDate) < today) {
+      errors.startDate = 'Start date cannot be in the past';
+    }
+
+    if (!formData.endDate) {
+      errors.endDate = 'End date is required';
+    } else if (new Date(formData.endDate) < new Date(formData.startDate)) {
+      errors.endDate = 'End date cannot be before start date';
+    }
+
+    // Validate times
+    if (!formData.startTime) {
+      errors.startTime = 'Start time is required';
+    }
+
+    if (!formData.endTime) {
+      errors.endTime = 'End time is required';
+    } else if (formData.startDate === formData.endDate && formData.startTime >= formData.endTime) {
+      errors.endTime = 'End time must be after start time';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (date, field) => {
+    const formattedDate = date.toISOString().split('T')[0];
+    setFormData(prev => ({ ...prev, [field]: formattedDate }));
   };
 
   const handleItemChange = (item, field, value) => {
@@ -90,7 +162,7 @@ const BookVenuePage = () => {
         ...prev.items,
         [item]: {
           ...prev.items[item],
-          [field]: value
+          [field]: field === 'quantity' ? parseInt(value) || 0 : value
         }
       }
     }));
@@ -98,6 +170,11 @@ const BookVenuePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -107,12 +184,12 @@ const BookVenuePage = () => {
         .from('bookings')
         .select()
         .eq('venue_id', venueId)
-        .eq('status', 'approved')  // <-- Only approved bookings
+        .eq('status', 'approved')
         .gte('start_date', formData.startDate)
         .lte('end_date', formData.endDate)
         .or(
           `and(start_time.lte.${formData.endTime},end_time.gte.${formData.startTime})`
-        ); // check overlapping times
+        );
 
       if (conflictError) throw conflictError;
 
@@ -139,7 +216,7 @@ const BookVenuePage = () => {
           start_time: formData.startTime,
           end_time: formData.endTime,
           club: formData.club,
-          status: 'pending'  // <-- booking starts as pending
+          status: 'pending'
         }])
         .select()
         .single();
@@ -227,20 +304,30 @@ const BookVenuePage = () => {
                 <input
                   type="text"
                   name="studentName"
-                  className="w-full p-2 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-2 border-2 ${formErrors.studentName ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
+                  pattern="[A-Za-z\s]+"
+                  title="Only letters allowed"
                 />
+                {formErrors.studentName && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.studentName}</p>
+                )}
               </div>
               <div className="flex-1 min-w-[250px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">Student ID</label>
                 <input
                   type="text"
                   name="studentId"
-                  className="w-full p-2 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-2 border-2 ${formErrors.studentId ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
+                  pattern="[A-Za-z0-9]+"
+                  title="Only alphanumeric characters allowed"
                 />
+                {formErrors.studentId && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.studentId}</p>
+                )}
               </div>
             </div>
 
@@ -250,20 +337,28 @@ const BookVenuePage = () => {
                 <input
                   type="tel"
                   name="phone"
-                  className="w-full p-2 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-2 border-2 ${formErrors.phone ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
                 />
+                {formErrors.phone && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>
+                )}
               </div>
               <div className="flex-1 min-w-[250px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">Club/Association</label>
                 <input
                   type="text"
                   name="club"
-                  className="w-full p-2 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-2 border-2 ${formErrors.club ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
+                  pattern="[A-Za-z\s]+"
+                  title="Only letters allowed"
                 />
+                {formErrors.club && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.club}</p>
+                )}
               </div>
             </div>
 
@@ -271,52 +366,69 @@ const BookVenuePage = () => {
               <label className="block mb-2 font-semibold text-gray-700 text-sm">Purpose of Event/Program</label>
               <textarea
                 name="purpose"
-                className="w-full p-2 border-2 border-blue-500 rounded-lg h-20 text-sm"
+                className={`w-full p-2 border-2 ${formErrors.purpose ? 'border-red-500' : 'border-blue-500'} rounded-lg h-20 text-sm`}
                 required
                 onChange={handleInputChange}
               />
+              {formErrors.purpose && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.purpose}</p>
+              )}
             </div>
 
             <div className="flex gap-4 mb-4 w-full flex-wrap">
               <div className="flex-1 min-w-[200px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">Start Date</label>
-                <input
-                  type="date"
-                  name="startDate"
-                  className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
+                <DatePicker
+                  selected={formData.startDate ? new Date(formData.startDate) : null}
+                  onChange={(date) => handleDateChange(date, 'startDate')}
+                  minDate={new Date()}
+                  className={`w-full p-1.5 border-2 ${formErrors.startDate ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
-                  onChange={handleInputChange}
+                  placeholderText="Select start date"
                 />
+                {formErrors.startDate && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.startDate}</p>
+                )}
               </div>
               <div className="flex-1 min-w-[200px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">End Date</label>
-                <input
-                  type="date"
-                  name="endDate"
-                  className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
+                <DatePicker
+                  selected={formData.endDate ? new Date(formData.endDate) : null}
+                  onChange={(date) => handleDateChange(date, 'endDate')}
+                  minDate={formData.startDate ? new Date(formData.startDate) : new Date()}
+                  className={`w-full p-1.5 border-2 ${formErrors.endDate ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
-                  onChange={handleInputChange}
+                  placeholderText="Select end date"
                 />
+                {formErrors.endDate && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.endDate}</p>
+                )}
               </div>
               <div className="flex-1 min-w-[200px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">Start Time</label>
                 <input
                   type="time"
                   name="startTime"
-                  className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-1.5 border-2 ${formErrors.startTime ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
                 />
+                {formErrors.startTime && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.startTime}</p>
+                )}
               </div>
               <div className="flex-1 min-w-[200px]">
                 <label className="block mb-2 font-semibold text-gray-700 text-sm">End Time</label>
                 <input
                   type="time"
                   name="endTime"
-                  className="w-full p-1.5 border-2 border-blue-500 rounded-lg text-sm"
+                  className={`w-full p-1.5 border-2 ${formErrors.endTime ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
                 />
+                {formErrors.endTime && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.endTime}</p>
+                )}
               </div>
             </div>
 
@@ -325,29 +437,26 @@ const BookVenuePage = () => {
             </h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-4">
-              {Object.entries(formData.items).map(([itemKey, itemData]) => {
-                // Display the item key as is (already replaced with the exact names you provided)
-                return (
-                  <div key={itemKey} className="border-2 border-blue-500 rounded-lg p-3 flex items-center gap-3 bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={itemData.checked}
-                      onChange={(e) => handleItemChange(itemKey, 'checked', e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <span className="flex-1 text-sm">{itemKey}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Qty"
-                      className="w-14 p-1 border-2 border-blue-500 rounded-lg text-sm"
-                      value={itemData.quantity}
-                      onChange={(e) => handleItemChange(itemKey, 'quantity', e.target.value)}
-                      disabled={!itemData.checked}
-                    />
-                  </div>
-                );
-              })}
+              {Object.entries(formData.items).map(([itemKey, itemData]) => (
+                <div key={itemKey} className="border-2 border-blue-500 rounded-lg p-3 flex items-center gap-3 bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={itemData.checked}
+                    onChange={(e) => handleItemChange(itemKey, 'checked', e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span className="flex-1 text-sm">{itemKey}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Qty"
+                    className={`w-14 p-1 border-2 ${!itemData.checked ? 'border-gray-300' : 'border-blue-500'} rounded-lg text-sm`}
+                    value={itemData.quantity}
+                    onChange={(e) => handleItemChange(itemKey, 'quantity', e.target.value)}
+                    disabled={!itemData.checked}
+                  />
+                </div>
+              ))}
             </div>
 
             <button 
@@ -375,6 +484,7 @@ const BookVenuePage = () => {
           </div>
         </div>
       </div>
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   );
 };
