@@ -23,8 +23,6 @@ const InventoryPage = () => {
       setInventories(data);
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -36,29 +34,30 @@ const InventoryPage = () => {
           id,
           quantity_used,
           returned,
-          inventory:inventory_id (id, name, quantity, unit, category),
-          bookings:booking_id (
+          inventory:inventory_id (id, name, quantity, units, category),
+          booking:booking_id (
             id,
-            student_name, 
-            start_date, 
-            end_date, 
-            venue_id, 
-            venues:venue_id (name),
+            student_name,
+            start_date,
+            end_date,
+            venue,
             status
           )
         `)
         .eq('returned', false);
 
       if (error) throw error;
-      setBookedItems(data);
+      setBookedItems(data || []);
     } catch (err) {
       toast.error('Failed to fetch booked items');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReturnItem = async (bookingInventoryId, inventoryId, quantity) => {
     try {
-      // Update the returned status in booking_inventory
+      // Mark item as returned
       const { error: updateError } = await supabase
         .from('booking_inventory')
         .update({ returned: true })
@@ -66,7 +65,7 @@ const InventoryPage = () => {
 
       if (updateError) throw updateError;
 
-      // Update the inventory quantity in inventory table
+      // Update inventory quantity
       const { error: quantityError } = await supabase
         .from('inventory')
         .update({ quantity: supabase.rpc('increment', { 
@@ -77,18 +76,19 @@ const InventoryPage = () => {
 
       if (quantityError) throw quantityError;
 
-      // Refresh both lists
-      await fetchInventories();
-      await fetchBookedItems();
-      toast.success('Item marked as returned successfully');
+      // Refresh data
+      await Promise.all([fetchInventories(), fetchBookedItems()]);
+      toast.success('Item returned successfully');
     } catch (err) {
-      toast.error('Failed to mark item as returned');
+      toast.error('Failed to return item: ' + err.message);
     }
   };
 
   useEffect(() => {
-    fetchInventories();
-    fetchBookedItems();
+    const loadData = async () => {
+      await Promise.all([fetchInventories(), fetchBookedItems()]);
+    };
+    loadData();
   }, []);
 
   // Group inventories by category
@@ -98,34 +98,19 @@ const InventoryPage = () => {
     return acc;
   }, {});
 
+  // Calculate booked quantities for each item
+  const getBookedQuantity = (inventoryId) => {
+    return bookedItems
+      .filter(item => item.inventory.id === inventoryId && !item.returned)
+      .reduce((sum, item) => sum + item.quantity_used, 0);
+  };
+
   if (loading) {
-    return (
-      <div className="flex min-h-screen font-sans relative">
-        <AdminSidebar onLogout={() => {
-          localStorage.removeItem('isAuthenticated');
-          window.location.href = '/login';
-        }} />
-        <div className="flex-grow ml-64 p-8 overflow-y-auto">
-          <h1 className="text-3xl font-extrabold mb-8">Inventory Management</h1>
-          <div>Loading...</div>
-        </div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div className="flex min-h-screen font-sans relative">
-        <AdminSidebar onLogout={() => {
-          localStorage.removeItem('isAuthenticated');
-          window.location.href = '/login';
-        }} />
-        <div className="flex-grow ml-64 p-8 overflow-y-auto">
-          <h1 className="text-3xl font-extrabold mb-8">Inventory Management</h1>
-          <div className="text-red-500">{error}</div>
-        </div>
-      </div>
-    );
+    return <div className="text-red-500">Error: {error}</div>;
   }
 
   return (
@@ -165,61 +150,53 @@ const InventoryPage = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Booked</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Available</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booked By</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {bookedItems.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.inventory.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.inventory.category}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.quantity_used} {item.inventory.unit}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.inventory.quantity} {item.inventory.unit}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.bookings.student_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.bookings.venues.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {new Date(item.bookings.start_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            item.bookings.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                            item.bookings.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {item.bookings.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleReturnItem(item.id, item.inventory.id, item.quantity_used)}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                            disabled={item.bookings.status !== 'approved'}
-                            title={item.bookings.status !== 'approved' ? 'Only approved bookings can be returned' : ''}
-                          >
-                            Mark Returned
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {bookedItems.map((item) => {
+                      const available = item.inventory.quantity;
+                      const booked = item.quantity_used;
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {item.inventory.name} ({item.inventory.category})
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {booked} {item.inventory.units}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {item.booking.student_name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {item.booking.venue}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {new Date(item.booking.start_date).toLocaleDateString()} - {' '}
+                            {new Date(item.booking.end_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleReturnItem(
+                                item.id, 
+                                item.inventory.id, 
+                                item.quantity_used
+                              )}
+                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                              disabled={item.booking.status !== 'approved'}
+                              title={item.booking.status !== 'approved' ? 
+                                'Only approved bookings can be returned' : ''}
+                            >
+                              Mark Returned
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -228,17 +205,33 @@ const InventoryPage = () => {
             <div>
               {Object.entries(groupedInventories).map(([category, items]) => (
                 <div key={category} className="mb-10">
-                  <h2 className="text-2xl font-bold mb-4">{category} Inventory</h2>
+                  <h2 className="text-2xl font-bold mb-4">{category}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {items.map((item) => (
-                      <div key={item.id} className="bg-white border border-gray-300 rounded-lg p-4 shadow hover:shadow-md transition">
-                        <h3 className="text-lg font-semibold mb-2">{item.name}</h3>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-600">Available:</span>
-                          <span className="font-medium">{item.quantity} {item.unit}{item.quantity !== 1 ? 's' : ''}</span>
+                    {items.map((item) => {
+                      const booked = getBookedQuantity(item.id);
+                      const available = item.quantity - booked;
+                      return (
+                        <div key={item.id} className="bg-white border rounded-lg p-4 shadow">
+                          <h3 className="text-lg font-semibold mb-2">{item.name}</h3>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span>Total:</span>
+                              <span>{item.quantity} {item.units}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Booked:</span>
+                              <span>{booked} {item.units}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Available:</span>
+                              <span className={available <= 0 ? 'text-red-500' : 'text-green-500'}>
+                                {available} {item.units}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

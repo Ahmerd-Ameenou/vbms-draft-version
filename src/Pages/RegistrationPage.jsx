@@ -67,7 +67,7 @@ function RegistrationPage() {
       }
 
       // Display success message after registration
-      setSuccessMessage('User registered successfully! Please check your email to confirm.');
+      setSuccessMessage('User registered successfully! ');
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -144,4 +144,4 @@ function RegistrationPage() {
   );
 }
 
-export default RegistrationPage;
+export default RegistrationPage

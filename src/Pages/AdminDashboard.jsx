@@ -23,21 +23,13 @@ function AdminDasboard() {
           </div>
 
           {/* Main buttons - Reduced gap and margins */}
-          <div className="flex gap-4 justify-center w-full max-w-5xl flex-wrap mt-2 px-4">
+          <div className="flex gap-4 justify-center w-full max-w-5xl flex-nowrap mt-2 px-4">
             {/* USERS button */}
             <SquareButton
               icon={<FaUsers className="text-lg" />}
               text="USERS"
               to="/users"
               className="h-28" // Reduced height
-            />
-
-            {/* Manage Inventory */}
-            <SquareButton
-              icon={<FaBoxes className="text-lg" />}
-              text="INVENTORY"
-              to="/inventory"
-              className="h-28"
             />
 
             {/* Booked Venues */}
@@ -55,15 +47,13 @@ function AdminDasboard() {
               to="/approve-reject-bookings"
               className="h-28"
             />
-          </div>
 
-          {/* Generate Reports Button - Smaller and less margin */}
-          <div className="w-full flex justify-center mt-4 px-4">
+            {/* Reports Button - Now inline with others */}
             <SquareButton
               icon={<FaFileAlt className="text-lg" />}
               text="REPORTS"
               to="/report"
-              className="w-64 h-12 bg-blue-600 hover:bg-blue-700" // More compact
+              className="h-28"
             />
           </div>
         </div>

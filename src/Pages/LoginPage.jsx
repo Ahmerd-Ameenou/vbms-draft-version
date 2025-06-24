@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import aiuBackground from '../assets/aiu.jpg';
 import { supabase } from '../Supabase-client';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import eye icons
 
 const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const navigate = useNavigate();
 
   // Clear any existing auth when component mounts
@@ -52,6 +54,11 @@ const LoginPage = ({ onLogin }) => {
     }
   };
 
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="min-h-screen flex justify-center items-center p-5 font-sans relative">
       {/* Background image container */}
@@ -85,13 +92,22 @@ const LoginPage = ({ onLogin }) => {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full py-3 px-4 my-2 rounded-lg border border-gray-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#0ba9a9]"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full py-3 px-4 my-2 rounded-lg border border-gray-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#0ba9a9]"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full py-3 px-4 my-2 rounded-lg border border-gray-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#0ba9a9] pr-10"
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
           <button
             onClick={handleSubmit}
             className="w-full py-4 text-white text-xl font-bold rounded-full border-none cursor-pointer mt-3 hover:bg-teal-600 transition-colors"

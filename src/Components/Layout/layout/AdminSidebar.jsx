@@ -33,15 +33,7 @@ const AdminSidebar = ({ onLogout }) => {
           </div>
         </Link>
 
-        {/* MANAGE INVENTORY */}
-        <Link to="/inventory" className="block">
-          <div className="flex items-center p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
-            <div className="w-8 h-8 flex items-center justify-center bg-[#0ba9a9] rounded-lg mr-3">
-              <FaBoxes className="text-white text-sm" />
-            </div>
-            <span className="text-white font-normal text-sm">INVENTORY</span>
-          </div>
-        </Link>
+        
 
         {/* BOOKED VENUES */}
         <Link to="/booked-venues" className="block">

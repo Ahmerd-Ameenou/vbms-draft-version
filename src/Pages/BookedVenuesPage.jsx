@@ -41,6 +41,7 @@ function BookedVenuesPage() {
             status,
             created_at,
             cancellation_reason,
+            rejection_reason,
             cancelled_at,
             venues (
               name,
@@ -78,24 +79,20 @@ function BookedVenuesPage() {
     }
 
     try {
-      // Verify booking exists and is cancellable
       const bookingToCancel = bookings.find(b => b.id === bookingId);
       if (!bookingToCancel) throw new Error('Booking not found');
       
       const startDateTime = new Date(`${bookingToCancel.start_date}T${bookingToCancel.start_time}`);
       const endDateTime = new Date(`${bookingToCancel.end_date}T${bookingToCancel.end_time}`);
       
-      // Check if booking is already past
       if (endDateTime < currentTime) {
         throw new Error('Cannot cancel past bookings');
       }
 
-      // Check if booking is already cancelled
       if (bookingToCancel.status === 'cancelled') {
         throw new Error('Booking is already cancelled');
       }
 
-      // Perform the update
       const { error } = await supabase
         .from('bookings')
         .update({ 
@@ -107,7 +104,6 @@ function BookedVenuesPage() {
 
       if (error) throw error;
 
-      // Update local state
       setBookings(bookings.map(booking => 
         booking.id === bookingId 
           ? { 
@@ -160,7 +156,6 @@ function BookedVenuesPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-200">
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-900 px-6 py-5 sm:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -191,7 +186,6 @@ function BookedVenuesPage() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="px-6 py-5 sm:px-8">
           {bookings.length === 0 ? (
             <div className="text-center py-12">
@@ -333,6 +327,16 @@ function BookedVenuesPage() {
                           </span>
                           {isPast && booking.status === 'approved' && (
                             <div className="text-xs text-gray-500 mt-1">Completed</div>
+                          )}
+                          {booking.status === 'rejected' && booking.rejection_reason && (
+                            <div className="text-xs text-gray-700 mt-1">
+                              <span className="font-medium">Reason:</span> {booking.rejection_reason}
+                            </div>
+                          )}
+                          {booking.status === 'cancelled' && booking.cancellation_reason && (
+                            <div className="text-xs text-gray-700 mt-1">
+                              <span className="font-medium">Reason:</span> {booking.cancellation_reason}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">

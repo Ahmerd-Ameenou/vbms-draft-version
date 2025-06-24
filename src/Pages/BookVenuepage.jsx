@@ -12,7 +12,6 @@ const BookVenuePage = () => {
   const { venue } = useParams();
   const navigate = useNavigate();
   const [venueId, setVenueId] = useState(null);
-  const [itemsMap, setItemsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,21 +27,14 @@ const BookVenuePage = () => {
     startTime: '',
     endTime: '',
     club: '',
-    items: {
-      Mat: { checked: false, quantity: 0 },
-      "Big drink container": { checked: false, quantity: 0 },
-      "First aid kit box": { checked: false, quantity: 0 },
-      "Portable speaker": { checked: false, quantity: 0 },
-      "Portable projector": { checked: false, quantity: 0 },
-      "HDMI cable": { checked: false, quantity: 0 },
-      "Audio cable": { checked: false, quantity: 0 },
-      "Portable white projection screen": { checked: false, quantity: 0 },
-      "Wireless microphone": { checked: false, quantity: 0 },
-      "Wired microphone": { checked: false, quantity: 0 },
-      "Mic stand": { checked: false, quantity: 0 },
-      Mixer: { checked: false, quantity: 0 }
-    }
   });
+
+  // Helper function to get today's date without time component
+  const getToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,20 +48,6 @@ const BookVenuePage = () => {
 
         if (venueError) throw venueError;
         setVenueId(venueData.id);
-
-        // Get items mapping
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('items')
-          .select('id, name');
-
-        if (itemsError) throw itemsError;
-
-        const itemsMapping = itemsData.reduce((acc, item) => {
-          acc[item.name] = item.id;
-          return acc;
-        }, {});
-
-        setItemsMap(itemsMapping);
         setLoading(false);
       } catch (error) {
         console.error('Initialization error:', error);
@@ -83,8 +61,7 @@ const BookVenuePage = () => {
 
   const validateForm = () => {
     const errors = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getToday();
 
     // Validate student name (letters only)
     if (!formData.studentName.trim()) {
@@ -100,7 +77,7 @@ const BookVenuePage = () => {
       errors.studentId = 'ID should be alphanumeric';
     }
 
-    // Validate phone number (now accepts international numbers with + and special characters)
+    // Validate phone number
     if (!formData.phone.trim()) {
       errors.phone = 'Phone number is required';
     }
@@ -117,20 +94,21 @@ const BookVenuePage = () => {
       errors.purpose = 'Purpose is required';
     }
 
-    // Validate dates
+    const startDate = formData.startDate ? new Date(formData.startDate) : null;
+    const endDate = formData.endDate ? new Date(formData.endDate) : null;
+    
     if (!formData.startDate) {
       errors.startDate = 'Start date is required';
-    } else if (new Date(formData.startDate) < today) {
+    } else if (startDate < today) {
       errors.startDate = 'Start date cannot be in the past';
     }
 
     if (!formData.endDate) {
       errors.endDate = 'End date is required';
-    } else if (new Date(formData.endDate) < new Date(formData.startDate)) {
+    } else if (endDate < startDate) {
       errors.endDate = 'End date cannot be before start date';
     }
 
-    // Validate times
     if (!formData.startTime) {
       errors.startTime = 'Start time is required';
     }
@@ -151,21 +129,22 @@ const BookVenuePage = () => {
   };
 
   const handleDateChange = (date, field) => {
-    const formattedDate = date.toISOString().split('T')[0];
-    setFormData(prev => ({ ...prev, [field]: formattedDate }));
-  };
-
-  const handleItemChange = (item, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      items: {
-        ...prev.items,
-        [item]: {
-          ...prev.items[item],
-          [field]: field === 'quantity' ? parseInt(value) || 0 : value
-        }
+    // Create a new date object with the selected date but normalized time to avoid timezone issues
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+    
+    const formattedDate = normalizedDate.toISOString().split('T')[0];
+    
+    setFormData(prev => {
+      const newData = { ...prev, [field]: formattedDate };
+      
+      // If changing start date and end date is before new start date, reset end date
+      if (field === 'startDate' && prev.endDate && new Date(formattedDate) > new Date(prev.endDate)) {
+        newData.endDate = formattedDate;
       }
-    }));
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -179,7 +158,7 @@ const BookVenuePage = () => {
     setSubmitError('');
 
     try {
-      // Check for existing bookings conflicts — now filtering only approved bookings
+      // Check for existing bookings conflicts — only checking approved bookings
       const { data: conflicts, error: conflictError } = await supabase
         .from('bookings')
         .select()
@@ -202,7 +181,7 @@ const BookVenuePage = () => {
         );
       }
 
-      // Create new booking with status 'pending' and start/end time
+      // Create new booking with status 'pending'
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert([{
@@ -222,23 +201,6 @@ const BookVenuePage = () => {
         .single();
 
       if (bookingError) throw bookingError;
-
-      // Create booking items
-      const itemsToInsert = Object.entries(formData.items)
-        .filter(([_, item]) => item.checked && item.quantity > 0)
-        .map(([itemName, item]) => ({
-          booking_id: booking.id,
-          item_id: itemsMap[itemName],
-          quantity: item.quantity
-        }));
-
-      if (itemsToInsert.length > 0) {
-        const { error: itemsError } = await supabase
-          .from('booking_items')
-          .insert(itemsToInsert);
-
-        if (itemsError) throw itemsError;
-      }
 
       navigate('/booking-status');
     } catch (error) {
@@ -304,6 +266,7 @@ const BookVenuePage = () => {
                 <input
                   type="text"
                   name="studentName"
+                  value={formData.studentName}
                   className={`w-full p-2 border-2 ${formErrors.studentName ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -319,6 +282,7 @@ const BookVenuePage = () => {
                 <input
                   type="text"
                   name="studentId"
+                  value={formData.studentId}
                   className={`w-full p-2 border-2 ${formErrors.studentId ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -337,6 +301,7 @@ const BookVenuePage = () => {
                 <input
                   type="tel"
                   name="phone"
+                  value={formData.phone}
                   className={`w-full p-2 border-2 ${formErrors.phone ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -350,6 +315,7 @@ const BookVenuePage = () => {
                 <input
                   type="text"
                   name="club"
+                  value={formData.club}
                   className={`w-full p-2 border-2 ${formErrors.club ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -366,6 +332,7 @@ const BookVenuePage = () => {
               <label className="block mb-2 font-semibold text-gray-700 text-sm">Purpose of Event/Program</label>
               <textarea
                 name="purpose"
+                value={formData.purpose}
                 className={`w-full p-2 border-2 ${formErrors.purpose ? 'border-red-500' : 'border-blue-500'} rounded-lg h-20 text-sm`}
                 required
                 onChange={handleInputChange}
@@ -381,10 +348,13 @@ const BookVenuePage = () => {
                 <DatePicker
                   selected={formData.startDate ? new Date(formData.startDate) : null}
                   onChange={(date) => handleDateChange(date, 'startDate')}
-                  minDate={new Date()}
+                  minDate={getToday()}
                   className={`w-full p-1.5 border-2 ${formErrors.startDate ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   placeholderText="Select start date"
+                  selectsStart
+                  startDate={formData.startDate ? new Date(formData.startDate) : null}
+                  endDate={formData.endDate ? new Date(formData.endDate) : null}
                 />
                 {formErrors.startDate && (
                   <p className="text-red-500 text-xs mt-1">{formErrors.startDate}</p>
@@ -395,10 +365,13 @@ const BookVenuePage = () => {
                 <DatePicker
                   selected={formData.endDate ? new Date(formData.endDate) : null}
                   onChange={(date) => handleDateChange(date, 'endDate')}
-                  minDate={formData.startDate ? new Date(formData.startDate) : new Date()}
+                  minDate={formData.startDate ? new Date(formData.startDate) : getToday()}
                   className={`w-full p-1.5 border-2 ${formErrors.endDate ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   placeholderText="Select end date"
+                  selectsEnd
+                  startDate={formData.startDate ? new Date(formData.startDate) : null}
+                  endDate={formData.endDate ? new Date(formData.endDate) : null}
                 />
                 {formErrors.endDate && (
                   <p className="text-red-500 text-xs mt-1">{formErrors.endDate}</p>
@@ -409,6 +382,7 @@ const BookVenuePage = () => {
                 <input
                   type="time"
                   name="startTime"
+                  value={formData.startTime}
                   className={`w-full p-1.5 border-2 ${formErrors.startTime ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -422,6 +396,7 @@ const BookVenuePage = () => {
                 <input
                   type="time"
                   name="endTime"
+                  value={formData.endTime}
                   className={`w-full p-1.5 border-2 ${formErrors.endTime ? 'border-red-500' : 'border-blue-500'} rounded-lg text-sm`}
                   required
                   onChange={handleInputChange}
@@ -430,33 +405,6 @@ const BookVenuePage = () => {
                   <p className="text-red-500 text-xs mt-1">{formErrors.endTime}</p>
                 )}
               </div>
-            </div>
-
-            <h3 className="text-gray-800 my-3 text-sm font-semibold w-full">
-              Items Requested
-            </h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-4">
-              {Object.entries(formData.items).map(([itemKey, itemData]) => (
-                <div key={itemKey} className="border-2 border-blue-500 rounded-lg p-3 flex items-center gap-3 bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={itemData.checked}
-                    onChange={(e) => handleItemChange(itemKey, 'checked', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <span className="flex-1 text-sm">{itemKey}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Qty"
-                    className={`w-14 p-1 border-2 ${!itemData.checked ? 'border-gray-300' : 'border-blue-500'} rounded-lg text-sm`}
-                    value={itemData.quantity}
-                    onChange={(e) => handleItemChange(itemKey, 'quantity', e.target.value)}
-                    disabled={!itemData.checked}
-                  />
-                </div>
-              ))}
             </div>
 
             <button 
